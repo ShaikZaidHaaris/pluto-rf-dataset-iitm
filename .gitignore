@@ -15,3 +15,5 @@ data/manifest_phase1.fixed*.json
 
 # Local download cache from snapshot_download
 pluto_capture/
+
+upload_hf.log

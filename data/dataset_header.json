@@ -1,0 +1,28 @@
+{
+  "schema": "pluto_phase1_hub_bundle_v1",
+  "source_manifest": "manifest_phase1.json",
+  "n_windows": 36468,
+  "iq_tensor_file": "iq_windows.npy",
+  "iq_shape": [
+    36468,
+    2,
+    2048
+  ],
+  "iq_dtype": "float32",
+  "meta_file": "windows_meta.json.gz",
+  "manifest_global_fields": {
+    "schema_version": 1,
+    "phase": 1,
+    "source": "pluto_capture",
+    "bands_policy": "one_row_per_band",
+    "window_samples": 2048,
+    "hop_samples": 2048,
+    "target_sample_rate_hz": 25000000.0,
+    "label_names": [
+      "not_drone",
+      "drone"
+    ],
+    "notes": "Pluto SDR IQ windows (real passband); written by data_collector_gui export."
+  },
+  "note": "Row index i matches manifest windows[i] and iq_windows[i]. derived_npy_rel omitted from meta."
+}

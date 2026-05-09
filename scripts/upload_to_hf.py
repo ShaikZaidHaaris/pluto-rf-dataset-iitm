@@ -1,21 +1,23 @@
 """
-upload_to_hf.py - one-shot uploader for pluto-rf-dataset-iitm.
+upload_to_hf.py — upload an entire ``pluto_capture`` directory tree.
 
-Pushes the full ``data/pluto_capture/`` capture tree (manifest + derived
-per-window IQ npy files + packed tensors) to a Hugging Face dataset repo.
+This uploads **every file** under ``--src`` (``derived/*.npy``, ``packed*``, …).
+For the IIT Madras release, prefer packing first:
 
-Usage:
+    python scripts/consolidate_pluto_capture_hub.py --dataset-dir …/pluto_capture --out-dir ./bundle
+    python scripts/upload_packed_to_hf.py --src ./bundle --repo-id USER/pluto-rf-dataset-iitm-packed --create
+
+Usage (raw tree):
 
     pip install huggingface_hub
-    huggingface-cli login        # paste a write token from https://huggingface.co/settings/tokens
+    hf auth login
 
     python scripts/upload_to_hf.py \
-        --src "/Users/zaidhaaris/Downloads/theGreatProject/Radar/video_radar/libiio_v026/scripts/data/pluto_capture" \
-        --repo-id "BlackWhite123/pluto-rf-dataset-iitm" \
+        --src /path/to/pluto_capture \
+        --repo-id USER/repo-name \
         --create
 
-The first run creates the dataset repo (``--create``); subsequent runs without
-``--create`` will sync incrementally.
+``--create`` calls ``create_repo(..., exist_ok=True)`` once; omit on later syncs.
 """
 
 from __future__ import annotations
