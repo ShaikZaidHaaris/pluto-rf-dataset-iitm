@@ -50,7 +50,7 @@ def main() -> int:
     parser.add_argument(
         "--commit-message",
         default="Upload pluto_capture dataset",
-        help="Commit message for the upload.",
+        help="Reserved for smaller uploads; upload_large_folder uses incremental commits.",
     )
     parser.add_argument(
         "--ignore-pattern",
@@ -58,10 +58,16 @@ def main() -> int:
         default=[".DS_Store", "*.bak"],
         help="Glob(s) to skip. Pass multiple times to add more.",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Parallel workers for upload_large_folder (default: Hub chooses).",
+    )
     args = parser.parse_args()
 
     try:
-        from huggingface_hub import HfApi, create_repo, upload_folder
+        from huggingface_hub import HfApi, create_repo
     except ImportError:
         print("ERROR: huggingface_hub is not installed.", file=sys.stderr)
         print("       Install with:  pip install huggingface_hub", file=sys.stderr)
@@ -91,14 +97,17 @@ def main() -> int:
             exist_ok=True,
         )
 
-    print(f"[hf] Uploading folder {src}  ->  {args.repo_id}")
-    upload_folder(
+    # Use upload_large_folder for multi‑GB trees (resumable, parallel uploads).
+    # Plain upload_folder warns / may fail on ~GB datasets — see Hub docs.
+    print(f"[hf] Upload-large-folder {src}  ->  {args.repo_id} (dataset)")
+    api.upload_large_folder(
         repo_id=args.repo_id,
         repo_type="dataset",
         folder_path=str(src),
-        path_in_repo=".",
-        commit_message=args.commit_message,
         ignore_patterns=list(args.ignore_pattern),
+        num_workers=args.workers,
+        print_report=True,
+        print_report_every=60,
     )
 
     url = f"https://huggingface.co/datasets/{args.repo_id}"
