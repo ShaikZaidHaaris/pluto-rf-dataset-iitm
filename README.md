@@ -15,14 +15,14 @@ This repository holds **documentation**, **small metadata copies**, and **script
 | Property | Value |
 |----------|-------|
 | Windows | **36,468** |
-| Labels | `not_drone` **28,295**, `drone` **8,173** |
+| Labels (from filenames, not GUI manifest) | `not_drone` **18,216**, `drone` **18,252** — token **`_nd_`** → not-drone, **`_d_`** → drone (`_nd_` is checked before `_d_`). Raw `manifest_phase1.json` had **14,147** wrong rows vs these tokens; **`consolidate_pluto_capture_hub.py` overwrites labels by default** (`--use-manifest-labels` keeps GUI fields). |
 | Manifest split field | all rows marked `train` in Phase‑1 export — **hold out your own val/test** (e.g. stratified by label / segment) |
 | Tensor | `iq_windows.npy` — `float32` **`(N, 2, 2048)`** (channel 0 = I, channel 1 = Q) |
 | Sample rate | 25 MHz (`target_sample_rate_hz` in `dataset_header.json`) |
 | Meta | `windows_meta.json.gz` — one JSON object per row, same order as `iq_windows[i]` |
 | Provenance | IIT Madras campus; ADALM-Pluto; collector export described in `manifest_global_fields.notes` |
 
-This repo includes a copy of **`data/dataset_header.json`** describing that bundle (schema `pluto_phase1_hub_bundle_v1`).
+This repo includes a copy of **`data/dataset_header.json`** describing that bundle (schema `pluto_phase1_hub_bundle_v1`, includes `label_provenance` and `labels_relabeled_count`).
 
 ### Download (HF)
 

@@ -11,6 +11,14 @@ After (--out-dir):
 
 Row i always corresponds to manifest ``windows[i]`` after validating shapes.
 
+**Labels:** Captures encode class in each derived filename / window ``id``:
+
+  - ``_nd_`` → not-drone (checked **before** ``_d_`` so tokens do not collide)
+  - ``_d_`` → drone
+
+By default the packer **overwrites** manifest ``label`` / ``label_index`` using those tokens
+(the GUI manifest is often wrong). Pass ``--use-manifest-labels`` to keep manifest labels.
+
 Large derived artifacts like packed_hybrid_* are NOT copied — regenerate locally if needed.
 
 Usage:
@@ -30,9 +38,37 @@ import gzip
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
+
+
+def _label_from_derived_filename(
+    derived_rel: str,
+    *,
+    not_drone_name: str,
+    drone_name: str,
+    label_names: List[str],
+) -> Tuple[str, int]:
+    """
+    Decode drone vs not-drone from Phase-1 naming convention (matches collector exports).
+
+    Rules (same order as ``fix_manifest_labels_from_id``):
+      - basename contains ``_nd_`` → not-drone class
+      - else basename contains ``_d_`` → drone class
+    """
+    stem = Path(derived_rel).name.lower()
+    if "_nd_" in stem:
+        lab = not_drone_name
+    elif "_d_" in stem:
+        lab = drone_name
+    else:
+        raise ValueError(
+            f"derived filename has neither '_nd_' nor '_d_' token (cannot infer label): {derived_rel!r}"
+        )
+    if lab not in label_names:
+        raise ValueError(f"Inferred label {lab!r} not in manifest label_names {label_names!r}")
+    return lab, int(label_names.index(lab))
 
 
 def _strip_window_for_hub(w: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,6 +100,17 @@ def main() -> int:
         default=0,
         help="If >0, only stack the first N windows (smoke test).",
     )
+    ap.add_argument(
+        "--use-manifest-labels",
+        action="store_true",
+        help="Keep manifest label fields (default: overwrite from _nd_/_d_ filename tokens).",
+    )
+    ap.add_argument("--drone-name", default="drone", help="Label string for drone class.")
+    ap.add_argument(
+        "--not-drone-name",
+        default="not_drone",
+        help="Label string for not-drone class.",
+    )
     args = ap.parse_args()
 
     ds = Path(args.dataset_dir).expanduser().resolve()
@@ -92,11 +139,25 @@ def main() -> int:
         print("ERROR: manifest.window_samples invalid", file=sys.stderr)
         return 2
 
+    label_names = list(manifest.get("label_names") or [])
+    if args.drone_name not in label_names or args.not_drone_name not in label_names:
+        print(
+            "ERROR: manifest.label_names must contain both "
+            f"{args.not_drone_name!r} and {args.drone_name!r}; got {label_names!r}",
+            file=sys.stderr,
+        )
+        return 2
+
     stack = np.empty((n, 2, ws), dtype=np.float32)
     meta_rows: List[Dict[str, Any]] = []
+    relabeled = 0
 
     print(f"[pack] {n} windows  shape (N, 2, {ws})  dtype=float32")
     print(f"[pack] reading from {ds}")
+    if args.use_manifest_labels:
+        print("[pack] labels: using manifest (GUI) fields (--use-manifest-labels)")
+    else:
+        print("[pack] labels: from filename tokens _nd_ → not_drone, _d_ → drone")
 
     for i, w in enumerate(windows):
         rel = w.get("derived_npy_rel")
@@ -119,7 +180,21 @@ def main() -> int:
             return 2
 
         stack[i] = arr
-        meta_rows.append(_strip_window_for_hub(w))
+
+        row = dict(w)
+        if not args.use_manifest_labels:
+            fn_lab, fn_idx = _label_from_derived_filename(
+                rel,
+                not_drone_name=args.not_drone_name,
+                drone_name=args.drone_name,
+                label_names=label_names,
+            )
+            if row.get("label") != fn_lab or int(row.get("label_index", -1)) != fn_idx:
+                relabeled += 1
+            row["label"] = fn_lab
+            row["label_index"] = fn_idx
+
+        meta_rows.append(_strip_window_for_hub(row))
 
         if (i + 1) % 2000 == 0 or i + 1 == n:
             print(f"[pack] stacked {i + 1}/{n}")
@@ -156,7 +231,18 @@ def main() -> int:
             )
             if k in manifest
         },
-        "note": "Row index i matches manifest windows[i] and iq_windows[i]. derived_npy_rel omitted from meta.",
+        "note": (
+            "Row index i matches manifest windows[i] and iq_windows[i]. derived_npy_rel omitted from meta."
+        ),
+        "label_provenance": (
+            "manifest_gui_fields"
+            if args.use_manifest_labels
+            else (
+                "filename_tokens: '_nd_' -> not_drone, '_d_' -> drone "
+                "(manifest labels overwritten; check labels_relabeled_count)."
+            )
+        ),
+        "labels_relabeled_count": relabeled if not args.use_manifest_labels else 0,
     }
     header_path.write_text(json.dumps(header, indent=2), encoding="utf-8")
 
@@ -165,6 +251,8 @@ def main() -> int:
     print(f"[done] {iq_path}  ({mb:.1f} MiB)")
     print(f"[done] {meta_path}  ({mb_meta:.2f} MiB)")
     print(f"[done] {header_path}")
+    if not args.use_manifest_labels:
+        print(f"[done] relabeled {relabeled}/{n} rows where manifest disagreed with filename tokens")
     print(f"[hint] Upload only these three (+ README); skip derived/ and packed_hybrid_*/.")
     return 0
 

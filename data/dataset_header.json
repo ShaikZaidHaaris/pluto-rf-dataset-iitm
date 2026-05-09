@@ -24,5 +24,7 @@
     ],
     "notes": "Pluto SDR IQ windows (real passband); written by data_collector_gui export."
   },
-  "note": "Row index i matches manifest windows[i] and iq_windows[i]. derived_npy_rel omitted from meta."
+  "note": "Row index i matches manifest windows[i] and iq_windows[i]. derived_npy_rel omitted from meta.",
+  "label_provenance": "filename_tokens: '_nd_' -> not_drone, '_d_' -> drone (manifest labels overwritten; check labels_relabeled_count).",
+  "labels_relabeled_count": 14147
 }
