@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+.DS_Store
+
+# Never commit the actual IQ data into this repo — it lives on Hugging Face.
+data/derived/
+data/pluto/
+data/packed/
+data/packed_hybrid*/
+data/manifest_phase1.json.bak
+data/manifest_phase1.fixed*.json
+
+# Local download cache from snapshot_download
+pluto_capture/
